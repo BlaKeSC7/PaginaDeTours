@@ -1,134 +1,141 @@
-import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { MapPin, Clock, Users, Star, ChevronLeft, Check } from 'lucide-react'
-import ReviewCard from '../components/ReviewCard'
-import LoadingSpinner from '../components/LoadingSpinner'
-import { fetchTourById, fetchReviewsForTour, createReview } from '../lib/supabase'
-import type { Tour, Review } from '../types'
-import toast from 'react-hot-toast'
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/router'; // Changed from useParams
+import Link from 'next/link'; // Changed from react-router-dom
+import { MapPin, Clock, Users, Star, ChevronLeft, Check } from 'lucide-react';
+import ReviewCard from '@/components/ReviewCard'; // Adjusted path
+import LoadingSpinner from '@/components/LoadingSpinner'; // Adjusted path
+import { fetchTourById, fetchReviewsForTour, createReview } from '@/lib/supabase'; // Adjusted path
+import type { Tour, Review } from '@/types'; // Adjusted path
+import toast from 'react-hot-toast';
 
-const TourDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>()
-  const [tour, setTour] = useState<Tour | null>(null)
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+const TourIdPage: React.FC = () => { // Renamed component
+  const router = useRouter();
+  const { id: tourId } = router.query; // Get tour ID from Next.js router query
 
-  // Review form state
-  const [userName, setUserName] = useState('')
-  const [rating, setRating] = useState(5)
-  const [comment, setComment] = useState('')
-  const [submittingReview, setSubmittingReview] = useState(false)
+  const [tour, setTour] = useState<Tour | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const [userName, setUserName] = useState('');
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const loadTourData = async () => {
-      if (!id) return
+      if (!tourId || typeof tourId !== 'string') return;
 
       try {
-        setLoading(true)
+        setLoading(true);
         const [tourData, reviewsData] = await Promise.all([
-          fetchTourById(id),
-          fetchReviewsForTour(id)
-        ])
+          fetchTourById(tourId),
+          fetchReviewsForTour(tourId)
+        ]);
 
         if (tourData) {
-          setTour(tourData)
-          setReviews(reviewsData)
+          setTour(tourData);
+          setReviews(reviewsData);
         } else {
-          toast.error('Tour not found')
+          toast.error('Tour no encontrado');
         }
       } catch (error) {
-        console.error('Error loading tour data:', error)
-        toast.error('Failed to load tour details')
+        console.error('Error cargando detalles del tour:', error);
+        toast.error('Error al cargar los detalles del tour');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadTourData()
-  }, [id])
+    if (router.isReady) { // Ensure router.query is populated
+        loadTourData();
+    }
+  }, [tourId, router.isReady]);
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     
-    if (!id || !userName.trim() || !comment.trim()) {
-      toast.error('Please fill in all fields')
-      return
+    if (!tourId || typeof tourId !== 'string' || !userName.trim() || !comment.trim()) {
+      toast.error('Por favor, completa todos los campos');
+      return;
     }
 
     try {
-      setSubmittingReview(true)
+      setSubmittingReview(true);
       const newReview = await createReview({
-        tour_id: parseInt(id),
+        tour_id: parseInt(tourId),
         user_name: userName.trim(),
         rating,
         comment: comment.trim()
-      })
+      });
 
-      setReviews(prev => [newReview, ...prev])
-      setUserName('')
-      setRating(5)
-      setComment('')
-      toast.success('Review submitted successfully!')
+      setReviews(prev => [newReview, ...prev]);
+      setUserName('');
+      setRating(5);
+      setComment('');
+      toast.success('¡Reseña enviada con éxito!');
     } catch (error) {
-      console.error('Error submitting review:', error)
-      toast.error('Failed to submit review')
+      console.error('Error al enviar la reseña:', error);
+      toast.error('Error al enviar la reseña');
     } finally {
-      setSubmittingReview(false)
+      setSubmittingReview(false);
     }
-  }
+  };
 
   const calculateAverageRating = () => {
-    if (reviews.length === 0) return 0
-    const sum = reviews.reduce((acc, review) => acc + review.rating, 0)
-    return (sum / reviews.length).toFixed(1)
-  }
+    if (reviews.length === 0) return '0'; // Return string for consistency
+    const sum = reviews.reduce((acc, reviewItem) => acc + reviewItem.rating, 0);
+    return (sum / reviews.length).toFixed(1);
+  };
 
-  const renderStars = (rating: number) => {
+  const renderStars = (numRating: number) => {
+    const roundedRating = Math.round(numRating);
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
         className={`h-5 w-5 ${
-          i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+          i < roundedRating ? 'text-yellow-400 fill-current' : 'text-gray-300'
         }`}
       />
-    ))
-  }
+    ));
+  };
 
-  if (loading) {
+  if (loading || !router.isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[calc(100vh-128px)] flex items-center justify-center"> {/* Adjust min-height if needed */}
         <LoadingSpinner />
       </div>
-    )
+    );
   }
 
   if (!tour) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[calc(100vh-128px)] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Tour Not Found</h1>
-          <Link to="/" className="btn-primary">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Tour No Encontrado</h1>
+          <Link href="/" className="btn-primary inline-flex items-center"> {/* Use NextLink */}
             <ChevronLeft className="mr-2 h-4 w-4" />
-            Back to Home
+            Volver al Inicio
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   const currentImage = tour.image_urls && tour.image_urls.length > 0
     ? tour.image_urls[currentImageIndex]
-    : 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
+    : 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200';
+
+  const averageRating = parseFloat(calculateAverageRating());
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <> {/* Removed Layout wrapper */}
       {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link to="/" className="text-primary-600 hover:text-primary-700 flex items-center">
+          <Link href="/" className="text-primary-600 hover:text-primary-700 flex items-center"> {/* Use NextLink */}
             <ChevronLeft className="mr-1 h-4 w-4" />
-            Back to Tours
+            Volver a los Tours
           </Link>
         </div>
       </div>
@@ -187,7 +194,7 @@ const TourDetailPage: React.FC = () => {
                 {tour.name}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-6 mb-6 text-gray-600">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-6 text-gray-600">
                 <div className="flex items-center">
                   <MapPin className="h-5 w-5 mr-2" />
                   <span>{tour.location}</span>
@@ -200,26 +207,26 @@ const TourDetailPage: React.FC = () => {
                 )}
                 <div className="flex items-center">
                   <Users className="h-5 w-5 mr-2" />
-                  <span>Small Groups</span>
+                  <span>Grupos Pequeños</span>
                 </div>
                 <div className="flex items-center">
                   <div className="flex mr-2">
-                    {renderStars(Math.round(parseFloat(calculateAverageRating())))}
+                    {renderStars(averageRating)}
                   </div>
                   <span>
-                    {calculateAverageRating()} ({reviews.length} reviews)
+                    {calculateAverageRating()} ({reviews.length} reseñas)
                   </span>
                 </div>
               </div>
 
               <div className="prose max-w-none mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Description</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Descripción</h2>
                 <p className="text-gray-700 leading-relaxed">{tour.description}</p>
               </div>
 
               {tour.includes && tour.includes.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-4">What's Included</h2>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-4">Qué Incluye</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {tour.includes.map((item, index) => (
                       <div key={index} className="flex items-center">
@@ -235,28 +242,27 @@ const TourDetailPage: React.FC = () => {
             {/* Reviews Section */}
             <div className="bg-white rounded-xl shadow-lg p-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-                Customer Reviews ({reviews.length})
+                Reseñas de Clientes ({reviews.length})
               </h2>
 
               {reviews.length > 0 ? (
                 <div className="space-y-6 mb-8">
-                  {reviews.map((review) => (
-                    <ReviewCard key={review.id} review={review} />
+                  {reviews.map((reviewItem) => ( // Renamed review to reviewItem to avoid conflict
+                    <ReviewCard key={reviewItem.id} review={reviewItem} />
                   ))}
                 </div>
               ) : (
                 <p className="text-gray-600 mb-8">
-                  No reviews yet. Be the first to share your experience!
+                  Aún no hay reseñas. ¡Sé el primero en compartir tu experiencia!
                 </p>
               )}
 
-              {/* Review Form */}
               <div className="border-t pt-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Leave a Review</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">Dejar una Reseña</h3>
                 <form onSubmit={handleReviewSubmit} className="space-y-6">
                   <div>
                     <label htmlFor="userName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Your Name
+                      Tu Nombre
                     </label>
                     <input
                       type="text"
@@ -270,7 +276,7 @@ const TourDetailPage: React.FC = () => {
 
                   <div>
                     <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-2">
-                      Rating
+                      Calificación
                     </label>
                     <select
                       id="rating"
@@ -278,17 +284,17 @@ const TourDetailPage: React.FC = () => {
                       onChange={(e) => setRating(Number(e.target.value))}
                       className="input-field"
                     >
-                      <option value={5}>5 Stars - Excellent</option>
-                      <option value={4}>4 Stars - Very Good</option>
-                      <option value={3}>3 Stars - Good</option>
-                      <option value={2}>2 Stars - Fair</option>
-                      <option value={1}>1 Star - Poor</option>
+                      <option value={5}>5 Estrellas - Excelente</option>
+                      <option value={4}>4 Estrellas - Muy Bueno</option>
+                      <option value={3}>3 Estrellas - Bueno</option>
+                      <option value={2}>2 Estrellas - Regular</option>
+                      <option value={1}>1 Estrella - Malo</option>
                     </select>
                   </div>
 
                   <div>
                     <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
-                      Your Review
+                      Tu Reseña
                     </label>
                     <textarea
                       id="comment"
@@ -296,7 +302,7 @@ const TourDetailPage: React.FC = () => {
                       onChange={(e) => setComment(e.target.value)}
                       rows={4}
                       className="input-field"
-                      placeholder="Share your experience..."
+                      placeholder="Comparte tu experiencia..."
                       required
                     />
                   </div>
@@ -306,7 +312,7 @@ const TourDetailPage: React.FC = () => {
                     disabled={submittingReview}
                     className="btn-primary w-full sm:w-auto"
                   >
-                    {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    {submittingReview ? 'Enviando...' : 'Enviar Reseña'}
                   </button>
                 </form>
               </div>
@@ -315,33 +321,33 @@ const TourDetailPage: React.FC = () => {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
+            <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8"> {/* Consider making top value more dynamic if navbar height changes */}
               <div className="text-center mb-6">
                 <div className="text-3xl font-bold text-primary-600 mb-2">
                   ${Number(tour.price).toFixed(0)}
                 </div>
-                <div className="text-gray-600">per person</div>
+                <div className="text-gray-600">por persona</div>
               </div>
 
               <button className="btn-primary w-full mb-4 text-lg py-4">
-                Book Now
+                Reservar Ahora
               </button>
 
               <div className="text-center text-sm text-gray-600 mb-6">
-                Free cancellation up to 24 hours before
+                Cancelación gratuita hasta 24 horas antes
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Need Help?</h3>
+                <h3 className="font-semibold text-gray-900 mb-4">¿Necesitas Ayuda?</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center">
-                    <span className="text-gray-600">📞 Call us:</span>
+                    <span className="text-gray-600">📞 Llámanos:</span>
                     <a href="tel:+18095550123" className="ml-2 text-primary-600 hover:text-primary-700">
                       +1 (809) 555-0123
                     </a>
                   </div>
                   <div className="flex items-center">
-                    <span className="text-gray-600">✉️ Email:</span>
+                    <span className="text-gray-600">✉️ Correo:</span>
                     <a href="mailto:info@puntacanatours.com" className="ml-2 text-primary-600 hover:text-primary-700">
                       info@puntacanatours.com
                     </a>
@@ -352,8 +358,8 @@ const TourDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
-export default TourDetailPage
+export default TourIdPage;

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from '@/components/Layout';
 import { addTour } from '@/lib/supabase';
 import { TourFormData } from '@/types';
 
@@ -102,10 +101,9 @@ const AdminPage: React.FC = () => {
   };
 
   return (
-    <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
             Panel de Administración - Agregar Tour
           </h1>
 
@@ -301,7 +299,6 @@ const AdminPage: React.FC = () => {
           </form>
         </div>
       </div>
-    </Layout>
   );
 };
 
